@@ -24,7 +24,7 @@ const clerkWebhooks = async (req, res) => {
     console.log("Data payload:", data);
 
     const userData = {
-      _id: data.id,
+      clerkId: data.id,
       email: data.email_addresses[0].email_address,
       username: data.first_name + " " + data.last_name,
       image: data.image_url,
@@ -37,11 +37,11 @@ const clerkWebhooks = async (req, res) => {
         break;
       }
       case "user.updated": {
-        await User.findByIdAndUpdate({ _id: data.id }, userData);
+        await User.findByIdAndUpdate({ clerkId: data.id }, userData);
         break;
       }
       case "user.deleted": {
-        await User.findByIdAndDelete({ _id: data.id });
+        await User.findByIdAndDelete({ clerkId: data.id });
         break;
       }
       default:
