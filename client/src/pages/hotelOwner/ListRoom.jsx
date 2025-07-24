@@ -1,10 +1,54 @@
-import React, { useState } from "react";
+import { useEffect, useState } from "react";
 import Title from "../../components/Title";
-import { roomsDummyData } from "../../assets/assets";
+import axios from "axios";
+import { BASE_URL, CURRENCY } from "../../utils/constants";
+import { useAuth } from "@clerk/clerk-react";
+import toast from "react-hot-toast";
+import { useSelector } from "react-redux";
 
 const ListRoom = () => {
-  const [rooms, setRooms] = useState(roomsDummyData);
+  const [rooms, setRooms] = useState([]);
+  const { getToken } = useAuth();
+  const user = useSelector((state) => state.user.user);
+  // Fetch Rooms of hotel Owner
+  const fetchRooms = async () => {
+    try {
+      const token = await getToken();
+      const { data } = await axios.get(BASE_URL + "/api/rooms/owner", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (data.success) {
+        setRooms(data.rooms);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
 
+  // Toggle availability of Room
+  const toggleAvailability = async (roomId) => {
+    const token = await getToken();
+    const { data } = await axios.post(
+      BASE_URL + "/api/rooms/toggle-availability",
+      { roomId },
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    if (data.success) {
+      toast.success(data.message);
+      fetchRooms();
+    } else {
+      toast.error(data.message);
+    }
+  };
+  useEffect(() => {
+    if (user) {
+      fetchRooms();
+    }
+  }, [user]);
   return (
     <div>
       <Title
@@ -41,12 +85,13 @@ const ListRoom = () => {
                   {item.amenities.join(", ")}
                 </td>
                 <td className="py-3 px-4 text-gray-700 border-t border-gray-300">
-                  {item.pricePerNight}
+                  {CURRENCY} {item.pricePerNight}
                 </td>
                 <td className="py-3 px-4 border-t border-gray-300 text-sm text-red-500 text-center">
                   <label className="relative inline-flex items-center cursor-pointer text-gray-900 gap-3">
                     <input
                       type="checkbox"
+                      onChange={() => toggleAvailability(item._id)}
                       className="sr-only peer"
                       checked={item.isAvailable}
                     />

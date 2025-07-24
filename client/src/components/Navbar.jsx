@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { assets } from "../assets/assets";
 import { useClerk, useUser, UserButton } from "@clerk/clerk-react";
+import { useDispatch, useSelector } from "react-redux";
+import { setShowHotelReg } from "../utils/userSlice";
 const BookIcon = () => (
   <svg
     className="w-4 h-4 text-gray-700"
@@ -35,7 +37,9 @@ const Navbar = () => {
   const { openSignIn } = useClerk();
   const { user } = useUser();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const location = useLocation();
+  const isOwner = useSelector((state) => state.user.isOwner);
 
   useEffect(() => {
     if (location.pathname !== "/") {
@@ -84,14 +88,18 @@ const Navbar = () => {
             />
           </Link>
         ))}
-        <button
-          onClick={() => navigate("/owner")}
-          className={`border px-4 py-1 text-sm font-light rounded-full cursor-pointer ${
-            isScrolled ? "text-black" : "text-white"
-          } transition-all`}
-        >
-          Dashboard
-        </button>
+        {user && (
+          <button
+            onClick={() =>
+              isOwner ? navigate("/owner") : dispatch(setShowHotelReg(true))
+            }
+            className={`border px-4 py-1 text-sm font-light rounded-full cursor-pointer ${
+              isScrolled ? "text-black" : "text-white"
+            } transition-all`}
+          >
+            {isOwner ? "Dashboard" : "List Your Hotel"}
+          </button>
+        )}
       </div>
 
       {/* Desktop Right */}
@@ -167,10 +175,12 @@ const Navbar = () => {
 
         {user && (
           <button
-            onClick={() => navigate("/owner")}
+            onClick={() =>
+              isOwner ? navigate("/owner") : dispatch(setShowHotelReg(true))
+            }
             className="border px-4 py-1 text-sm font-light rounded-full cursor-pointer transition-all"
           >
-            Dashboard
+            {isOwner ? "Dashboard" : "List Your Hotel"}
           </button>
         )}
 

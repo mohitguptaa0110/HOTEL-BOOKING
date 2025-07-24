@@ -1,8 +1,39 @@
-import React, { useState } from "react";
-import { assets, dashboardDummyData } from "../../assets/assets";
+import { useEffect, useState } from "react";
+import { assets } from "../../assets/assets";
 import Title from "../../components/Title";
+import { useAuth } from "@clerk/clerk-react";
+import axios from "axios";
+import { BASE_URL, CURRENCY } from "../../utils/constants";
+import { useSelector } from "react-redux";
 const Dashboard = () => {
-  const [dashboardData, setDashboardData] = useState(dashboardDummyData);
+  const [dashboardData, setDashboardData] = useState({
+    bookings: [],
+    totalBookings: 0,
+    totalRevenue: 0,
+  });
+  const { getToken } = useAuth();
+  const user = useSelector((state) => state.user.user);
+  const fetchDashboardData = async () => {
+    try {
+      const token = await getToken();
+      const { data } = await axios.get(BASE_URL + "/api/bookings/hotel", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (data.success) {
+        setDashboardData(data.dashboardData);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchDashboardData();
+    }
+  }, [user]);
   return (
     <div>
       <Title
@@ -37,7 +68,7 @@ const Dashboard = () => {
           <div className="flex flex-col sm:ml-4 font-medium">
             <p className="text-blue-500 text-lg">Total Revenue</p>
             <p className="text-neutral-400 text-base">
-              ${dashboardData.totalRevenue}
+              {CURRENCY} {dashboardData.totalRevenue}
             </p>
           </div>
         </div>
@@ -76,12 +107,18 @@ const Dashboard = () => {
                 </td>
 
                 <td className="py-3 px-4 text-gray-700 border-t border-gray-300 text-center">
-                  ${item.totalPrice}
+                  {CURRENCY}{item.totalPrice}
                 </td>
 
                 <td className="py-3 px-4 border-t border-gray-300 flex">
-                  <button className={`py-1 px-3 text-xs rounded-full mx-auto ${item.isPaid ? 'bg-green-200 text-green-600' : 'bg-amber-200 text-yellow-600'}`}>
-                    {item.isPaid ? 'Completed' : 'Pending'}
+                  <button
+                    className={`py-1 px-3 text-xs rounded-full mx-auto ${
+                      item.isPaid
+                        ? "bg-green-200 text-green-600"
+                        : "bg-amber-200 text-yellow-600"
+                    }`}
+                  >
+                    {item.isPaid ? "Completed" : "Pending"}
                   </button>
                 </td>
               </tr>
