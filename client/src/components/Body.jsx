@@ -8,7 +8,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { setIsOwner, setSearchedCities, setUser } from "../utils/userSlice";
 import { useEffect } from "react";
 import { BASE_URL } from "../utils/constants";
-import { Toaster , toast} from "react-hot-toast";
+import { Toaster, toast } from "react-hot-toast";
+import { addRoom } from "../utils/roomSlice";
 
 const Body = () => {
   const isOwnerPath = useLocation().pathname.includes("owner");
@@ -38,6 +39,26 @@ const Body = () => {
   useEffect(() => {
     if (user) fetchUser();
   }, [user]);
+
+  const fetchRooms = async () => {
+    try {
+      const token = await getToken();
+      const { data } = await axios.get(BASE_URL + "/api/rooms", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (data.success) {
+        dispatch(addRoom(data.rooms));
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  useEffect(() => {
+    fetchRooms();
+  }, []);
 
   const showHotelReg = useSelector((state) => state.user.showHotelReg);
 

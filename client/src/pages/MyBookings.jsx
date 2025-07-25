@@ -1,9 +1,37 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Title from "../components/Title";
-import { assets, userBookingsDummyData } from "../assets/assets";
+import { assets } from "../assets/assets";
+import { useAuth } from "@clerk/clerk-react";
+import axios from "axios";
+import { BASE_URL } from "../utils/constants";
+import { useSelector } from "react-redux";
 
 const MyBookings = () => {
-  const [bookings, setBookings] = useState(userBookingsDummyData);
+  const [bookings, setBookings] = useState([]);
+  const { getToken } = useAuth();
+  const user = useSelector((state) => state.user.user);
+
+  const fetchUserBookings = async () => {
+    try {
+      const token = await getToken();
+      const { data } = await axios.get(BASE_URL + "/api/bookings/user", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (data.success) {
+        setBookings(data.bookings);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchUserBookings();
+    }
+  }, [user]);
   return (
     <div className="py-28 md:pb-35 md:pt-32 px-4 md:px-16 lg:px-24 xl:px-32">
       <Title
@@ -81,7 +109,11 @@ const MyBookings = () => {
                   {booking.isPaid ? "Paid" : "Unpaid"}
                 </p>
               </div>
-              {!booking.isPaid && <button className="px-4 py-1.5 mt-4 text-xs border border-gray-400 rounded-full hover:bg-gray-50 transition-all cursor-pointer">Pay Now</button>}
+              {!booking.isPaid && (
+                <button className="px-4 py-1.5 mt-4 text-xs border border-gray-400 rounded-full hover:bg-gray-50 transition-all cursor-pointer">
+                  Pay Now
+                </button>
+              )}
             </div>
           </div>
         ))}
