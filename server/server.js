@@ -7,12 +7,7 @@ const clerkWebhooks = require("./controllers/clerkWebhooks");
 const connectCloudinary = require("./configs/cloudinary");
 
 const app = express();
-app.use(
-  cors({
-    origin: "http://localhost:5173",
-    credentials: true,
-  })
-); // Enable Cross-Origin Resource Sharing
+app.use(cors()); // Enable Cross-Origin Resource Sharing
 app.use(express.json());
 app.use(clerkMiddleware());
 
