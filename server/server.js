@@ -12,7 +12,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173",
-      "https://your-frontend-domain.vercel.app",
+      "https://stayease-silk.vercel.app"
     ],
     credentials: true,
   })
