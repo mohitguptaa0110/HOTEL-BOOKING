@@ -17,21 +17,20 @@ const stripeWebhooks = async (req, res) => {
   }
 
   // Handle the event
-  if (event.type === "payment_intent.succeeded") {
-    const paymentIntent = event.data.object;
-    const paymentIntentId = paymentIntent.id;
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object;
 
-    // Getting session metadata
-    const session = await stripeInstance.checkout.session.list({
-      payment_intent: paymentIntentId,
-    })
+    const bookingId = session.metadata.bookingId;
 
-    const {bookingId} =session.data[0].metadata;
-    // Mark payment as paid
-    await Booking.findByIdAndUpdate(bookingId, {
+    try {
+      await Booking.findByIdAndUpdate(bookingId, {
         isPaid: true,
         paymentMethod: "Stripe",
       });
+      console.log("✅ Booking marked as paid");
+    } catch (error) {
+      console.error("❌ Failed to update booking:", error.message);
+    }
   } else {
     console.log("Unhandled event type:", event.type);
   }
