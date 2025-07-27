@@ -5,9 +5,27 @@ const connectDB = require("./configs/database");
 const { clerkMiddleware } = require("@clerk/express");
 const clerkWebhooks = require("./controllers/clerkWebhooks");
 const connectCloudinary = require("./configs/cloudinary");
+const stripeWebhooks = require("./controllers/stripeWebhooks");
 
 const app = express();
+// app.use(
+//   cors({
+//     origin: [
+//       "http://localhost:5173",
+//       "https://your-frontend-domain.vercel.app",
+//     ],
+//     credentials: true,
+//   })
+// ); // Enable Cross-Origin Resource Sharing
 app.use(cors()); // Enable Cross-Origin Resource Sharing
+
+// API to listen to stripe WebHooks
+app.post(
+  "/api/stripe",
+  express.raw({ type: "application/json" }), // <-- required for signature
+  stripeWebhooks
+);
+
 app.use(express.json());
 app.use(clerkMiddleware());
 

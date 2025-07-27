@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Title from "../components/Title";
 import { assets } from "../assets/assets";
 import { useAuth } from "@clerk/clerk-react";
 import axios from "axios";
 import { BASE_URL } from "../utils/constants";
 import { useSelector } from "react-redux";
+import toast from "react-hot-toast";
 
 const MyBookings = () => {
   const [bookings, setBookings] = useState([]);
@@ -19,6 +20,23 @@ const MyBookings = () => {
       });
       if (data.success) {
         setBookings(data.bookings);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+  const handlePayment = async (bookingId) => {
+    try {
+      const { data } = await axios.post(BASE_URL+
+        "/api/bookings/stripe-payment",
+        { bookingId },
+        { headers: { Authorization: `Bearer ${await getToken()}` } }
+      );
+
+      if (data.success) {
+        window.location.href = data.url;
       } else {
         toast.error(data.message);
       }
@@ -110,7 +128,7 @@ const MyBookings = () => {
                 </p>
               </div>
               {!booking.isPaid && (
-                <button className="px-4 py-1.5 mt-4 text-xs border border-gray-400 rounded-full hover:bg-gray-50 transition-all cursor-pointer">
+                <button onClick={() => handlePayment(booking._id)} className="px-4 py-1.5 mt-4 text-xs border border-gray-400 rounded-full hover:bg-gray-50 transition-all cursor-pointer">
                   Pay Now
                 </button>
               )}
