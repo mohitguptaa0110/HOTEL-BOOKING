@@ -25,69 +25,91 @@ bookingRouter.post("/check-availability", async (req, res) => {
 });
 
 // Api to create a new booking
+const mongoose = require("mongoose");
+
 bookingRouter.post("/book", userAuth, async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const { room, checkInDate, checkOutDate, guests } = req.body;
     const user = req.user._id;
 
-    // Before booking check availability
-    const isAvailable = await checkAvailability({
-      checkInDate,
-      checkOutDate,
+    // 🔒 STEP 1: Check availability INSIDE transaction
+    const conflictingBookings = await Booking.find({
       room,
-    });
+      checkInDate: { $lte: checkOutDate },
+      checkOutDate: { $gte: checkInDate },
+    }).session(session);
 
-    if (!isAvailable) {
+    if (conflictingBookings.length > 0) {
+      await session.abortTransaction();
+      session.endSession();
       return res.json({ success: false, message: "Room is not available" });
     }
-    // get totalPrice from Room
-    const roomData = await Room.findById(room).populate("hotel");
+
+    // 🔒 STEP 2: Get room data INSIDE transaction
+    const roomData = await Room.findById(room)
+      .populate("hotel")
+      .session(session);
+
     let totalPrice = roomData.pricePerNight;
 
-    // Calculate totalPrice based on nights
     const checkIn = new Date(checkInDate);
     const checkOut = new Date(checkOutDate);
-    const timeDiff = checkOut.getTime() - checkIn.getTime();
-    const nights = Math.ceil(timeDiff / (1000 * 3600 * 24));
+    const nights = Math.ceil(
+      (checkOut.getTime() - checkIn.getTime()) / (1000 * 3600 * 24)
+    );
 
     totalPrice *= nights;
-    const booking = await Booking.create({
-      user,
-      room,
-      hotel: roomData.hotel._id,
-      guests: +guests,
-      checkInDate,
-      checkOutDate,
-      totalPrice,
-    });
 
+    // 🔒 STEP 3: Create booking INSIDE transaction
+    const booking = await Booking.create(
+      [
+        {
+          user,
+          room,
+          hotel: roomData.hotel._id,
+          guests: +guests,
+          checkInDate,
+          checkOutDate,
+          totalPrice,
+        },
+      ],
+      { session }
+    );
+
+    // ✅ STEP 4: Commit transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    // 📧 Send email AFTER commit (important)
     const mailOptions = {
       from: `"StayEase" <${process.env.SENDER_EMAIL}>`,
       to: req.user.email,
       subject: "Hotel Booking Details",
       html: `
-    <h2>Your Booking Details</h2>
-    <p>Dear ${req.user.username},</p>
-    <p>Thank you for your booking! Here are your details:</p>
-    <ul>
-      <li><strong>Booking ID:</strong> ${booking._id}</li>
-      <li><strong>Hotel Name:</strong> ${roomData.hotel.name}</li>
-      <li><strong>Location:</strong> ${roomData.hotel.address}</li>
-      <li><strong>Date:</strong> ${booking.checkInDate.toDateString()}</li>
-      <li><strong>Booking Amount:</strong> ${process.env.CURRENCY || "$"}${
-        booking.totalPrice
-      } /night</li>
-    </ul>
-    <p>We look forward to welcoming you!</p>
-    <p>If you need to make any changes, feel free to contact us.</p>
-  `,
+        <h2>Your Booking Details</h2>
+        <p>Dear ${req.user.username},</p>
+        <p>Thank you for your booking!</p>
+        <ul>
+          <li><strong>Booking ID:</strong> ${booking[0]._id}</li>
+          <li><strong>Hotel Name:</strong> ${roomData.hotel.name}</li>
+          <li><strong>Date:</strong> ${new Date(checkInDate).toDateString()}</li>
+          <li><strong>Amount:</strong> ${totalPrice}</li>
+        </ul>
+      `,
     };
 
     await transporter.sendMail(mailOptions);
 
-    res.json({ success: true, message: "Booking created successfully" });
+    res.json({ success: true, message: "Booking successful" });
+
   } catch (error) {
-    res.json({ success: false, message: "Failed to create booking" });
+    await session.abortTransaction();
+    session.endSession();
+
+    res.json({ success: false, message: "Booking failed" });
   }
 });
 
