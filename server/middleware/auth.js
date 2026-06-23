@@ -11,7 +11,7 @@ const userAuth = async (req, res, next) => {
       });
     }
 
-    const user = await User.findById(userId);
+    const user = await User.findBy(userId);
 
     if (!user) {
       return res.status(404).json({
